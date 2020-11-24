@@ -1,0 +1,26 @@
+# This yaml is for ansible consumption
+---
+- hosts: localhost
+  module_defaults:
+    group/k8s:
+      host: https://api.cluster-a2e6.a2e6.sandbox1559.opentlc.com:6443
+      ca_cert: cert.pem
+  tasks:
+  - include_vars: k8s_login.yml
+
+  - name: Log in (obtain access token)
+    k8s_auth:
+      username: admin
+      password: "{{ k8s_admin_password }}"
+    register: k8s_auth_results
+
+  - name: Get a list of all deployments
+    k8s_facts:
+      api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+      kind: Deployment
+      namespace: bookinfo
+    register: deploy_list
+
+  - debug:
+      msg: "{{ item.metadata.name }}"
+    loop: "{{ deploy_list.resources }}"

@@ -1,0 +1,87 @@
+# This yaml is for ansible consumption
+---
+- hosts: localhost
+  module_defaults:
+    group/k8s:
+      host: https://api.cluster-a2e6.a2e6.sandbox1559.opentlc.com:6443
+      ca_cert: cert.pem
+  tasks:
+  - include_vars: k8s_login.yml
+
+  - name: Log in (obtain access token)
+    k8s_auth:
+      username: admin
+      password: "{{ k8s_admin_password }}"
+    register: k8s_auth_results
+
+  - name: Create the bookinfo namespace
+    k8s:
+      name: bookinfo
+      api_version: v1
+      kind: Namespace
+      state: present
+  
+  - name: Download the bookinfo definition
+    get_url:
+      url: https://raw.githubusercontent.com/istio/istio/1.4.0/samples/bookinfo/platform/kube/bookinfo.yaml
+      dest: "{{ playbook_dir }}"
+      mode: '0640'
+
+  - name: Create the bookinfo application
+    k8s:
+      state: present
+      namespace: bookinfo
+      src: "{{ playbook_dir }}/bookinfo.yaml"
+
+  - name: Create the route for productpage
+    k8s:
+      state: present
+      namespace: bookinfo
+      src: "{{ playbook_dir }}/files/route-productpage.yaml"
+    
+  - name: Install the Operators
+    k8s:
+      state: present
+      src: "{{ item }}"
+    loop:
+      - "{{ playbook_dir }}/files/sub-elasticsearch.yaml"
+      - "{{ playbook_dir }}/files/sub-jaeger.yaml"
+      - "{{ playbook_dir }}/files/sub-kiali.yaml"
+      - "{{ playbook_dir }}/files/sub-servicemesh.yaml"
+
+  - name: Create the namespace for the SM Control Plane
+    k8s:
+      name: bookretail-istio-system
+      api_version: v1
+      kind: Namespace
+      state: present
+ 
+  - name: Create the Service Mesh Control Plane
+    k8s:
+      state: present
+      src: "{{ playbook_dir }}/files/servicemesh-smcp.yaml"
+
+  - name: Create the Service Mesh Member Roll
+    k8s:
+      state: present
+      src: "{{ playbook_dir }}/files/servicemesh-smmr.yaml"
+
+  - name: Get a list of deployments from bookinfo
+    k8s_facts:
+      api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+      kind: Deployment
+      namespace: bookinfo
+    register: deploy_list
+
+  - name: Patch deployments to enable sidecar injection
+    command: >
+      oc patch deployment {{ item.metadata.name }} -p
+      '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject": "true" }}}}}'
+    loop: "{{ deploy_list.resources }}"
+
+#  - name: Get a list of all pods from the bookinfo namespace
+#    k8s_facts:
+#      api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
+#      kind: Pod
+#      namespace: bookinfo
+#    register: pod_list
