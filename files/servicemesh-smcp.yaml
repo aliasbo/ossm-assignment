@@ -2,7 +2,6 @@ apiVersion: maistra.io/v1
 kind: ServiceMeshControlPlane
 metadata:
   name: service-mesh-installation
-  namespace: bookretail-istio-system
 spec:
   threeScale:
     enabled: false

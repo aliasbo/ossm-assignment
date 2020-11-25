@@ -1,83 +1,139 @@
 # This yaml is for ansible consumption
 ---
 - hosts: localhost
-  module_defaults:
-    group/k8s:
-      host: https://api.cluster-a2e6.a2e6.sandbox1559.opentlc.com:6443
-      ca_cert: cert.pem
+  gather_facts: no
+  vars:
+    api_url: https://api.cluster-a2e6.a2e6.sandbox1559.opentlc.com:6443
+    api_cert: "{{ playbook_dir }}/certs/api-cert.pem"
+    k8s_admin: admin
+    bookinfo_ns: bookinfo
+    bookinfo_def_url: https://raw.githubusercontent.com/istio/istio/1.4.0/samples/bookinfo/platform/kube/bookinfo.yaml
+    bookinfo_yaml: "{{ playbook_dir }}/files/bookinfo.yaml"
+    es_operator: "{{ playbook_dir }}/files/sub-elasticsearch.yaml"
+    jaeger_operator: "{{ playbook_dir }}/files/sub-jaeger.yaml"
+    kiali_operator: "{{ playbook_dir }}/files/sub-kiali.yaml"
+    sm_operator: "{{ playbook_dir }}/files/sub-servicemesh.yaml"
+    smcp_ns: bookretail-istio-system
+    smcp_yaml: "{{ playbook_dir }}/files/servicemesh-smcp.yaml"
+    smmr_yaml: "{{ playbook_dir }}/files/servicemesh-smmr.yaml"
+    secret_name: cacerts
+    ca_cert: "{{ playbook_dir }}/certs/ca-cert.pem"
+    ca_key: "{{ playbook_dir }}/certs/ca-key.pem"
+    root_cert: "{{ playbook_dir }}/certs/root-cert.pem"
+    cert_chain: "{{ playbook_dir }}/certs/cert-chain.pem"
+
   tasks:
   - include_vars: k8s_login.yml
 
   - name: Log in (obtain access token)
     k8s_auth:
-      username: admin
+      host: "{{ api_url }}"
+      ca_cert: "{{ api_cert }}"
+      username: "{{ k8s_admin }}"
       password: "{{ k8s_admin_password }}"
     register: k8s_auth_results
 
   - name: Create the bookinfo namespace
     k8s:
-      name: bookinfo
+      name: "{{ bookinfo_ns }}"
       api_version: v1
       kind: Namespace
       state: present
   
   - name: Download the bookinfo definition
     get_url:
-      url: https://raw.githubusercontent.com/istio/istio/1.4.0/samples/bookinfo/platform/kube/bookinfo.yaml
-      dest: "{{ playbook_dir }}"
+      url: "{{ bookinfo_def_url }}"
+      dest: "{{ bookinfo_yaml }}"
       mode: '0640'
 
   - name: Create the bookinfo application
     k8s:
       state: present
-      namespace: bookinfo
-      src: "{{ playbook_dir }}/bookinfo.yaml"
+      namespace: "{{ bookinfo }}"
+      src: "{{ bookinfo_yaml }}"
 
   - name: Create the route for productpage
     k8s:
       state: present
-      namespace: bookinfo
-      src: "{{ playbook_dir }}/files/route-productpage.yaml"
+      namespace: "{{ bookinfo_ns }}"
+      src: "{{ playbook_dir }}/files/productpage-route.yaml"
+      wait: yes
     
   - name: Install the Operators
     k8s:
       state: present
       src: "{{ item }}"
+      wait: yes
+      wait_condition:
+        reason: AllCatalogSourcesHealthy
+        status: "False"
+        type: CatalogSourcesUnhealthy
     loop:
-      - "{{ playbook_dir }}/files/sub-elasticsearch.yaml"
-      - "{{ playbook_dir }}/files/sub-jaeger.yaml"
-      - "{{ playbook_dir }}/files/sub-kiali.yaml"
-      - "{{ playbook_dir }}/files/sub-servicemesh.yaml"
+      - "{{ es_operator }}"
+      - "{{ jaeger_operator }}"
+      - "{{ kiali_operator }}"
+      - "{{ sm_operator }}"
 
   - name: Create the namespace for the SM Control Plane
     k8s:
-      name: bookretail-istio-system
+      name: "{{ smcp_ns }}"
       api_version: v1
       kind: Namespace
       state: present
  
   - name: Create the Service Mesh Control Plane
     k8s:
+      apply: yes
       state: present
-      src: "{{ playbook_dir }}/files/servicemesh-smcp.yaml"
+      src: "{{ smcp_yaml }}"
+      namespace: "{{ smcp_ns }}"
+      wait_condition:
+        reason: ComponentsReady
+        status: "True"
+        type: Ready
 
   - name: Create the Service Mesh Member Roll
     k8s:
+      apply: yes
       state: present
-      src: "{{ playbook_dir }}/files/servicemesh-smmr.yaml"
+      src: "{{ smmr_yaml }}"
+      namespace: "{{ smcp_ns }}"
+      wait_condition:
+        reason: Configured
+        status: "True"
+        type: Ready
 
   - name: Get a list of deployments from bookinfo
     k8s_facts:
       api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
       kind: Deployment
-      namespace: bookinfo
+      namespace: "{{ bookinfo_ns }}"
     register: deploy_list
 
   - name: Patch deployments to enable sidecar injection
     command: >
-      oc patch deployment {{ item.metadata.name }} -p
+      oc -n {{ bookinfo_ns }} patch deployment {{ item.metadata.name }} -p
       '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject": "true" }}}}}'
     loop: "{{ deploy_list.resources }}"
+
+  - name: bookinfo-service-policy
+
+  - name: Create secret for Certificates
+    k8s:
+      state: present
+      definition: 
+        apiVersion: v1
+        kind: Secret
+        type: Opaque             
+        metadata:
+          name: "{{ secret_name }}"
+          namespace: "{{ smcp_ns }}"     
+        data:
+          ca-cert.pem: "{{ lookup('file',ca_cert ) | b64encode }}"
+          ca-key.pem: "{{ lookup('file',ca_key ) | b64encode }}"
+          root-cert.pem: "{{ lookup('file',root_cert ) | b64encode }}"
+          cert-chain.pem: "{{ lookup('file',cert_chain ) | b64encode }}"
+
 
 #  - name: Get a list of all pods from the bookinfo namespace
 #    k8s_facts:
