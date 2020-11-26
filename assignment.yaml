@@ -138,7 +138,7 @@
 
   - name: Check that the productpage service can be reached through the Istio ingress gateway
     uri:
-      url: "https://productpage.{{ bookinfo_ns }}.apps.{{ cluster_domain }}/productpage
+      url: "https://productpage.{{ bookinfo_ns }}.apps.{{ cluster_domain }}/productpage"
       return_content: yes
       validate_certs: no
     register: this
