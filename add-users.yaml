@@ -8,7 +8,7 @@
   - include_vars: "{{ playbook_dir }}/vars/k8s_login.yaml"
 
   - name: Retrieve HTPasswd file
-    command: >
+    shell: >
       oc get secret htpass-secret -ojsonpath={.data.htpasswd}
       -n openshift-config | base64 -d > {{ users_htpasswd }}
 
