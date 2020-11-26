@@ -115,7 +115,7 @@
     k8s:
       state: present
       namespace: "{{ smcp_ns }}"
-      src: "{{ loopup('template',wildcard_gateway) }}"
+      src: "{{ lookup('template',wildcard_gateway) }}"
 
   - name: Create a Policy for mTLS
     k8s:
