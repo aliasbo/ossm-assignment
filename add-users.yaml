@@ -38,7 +38,7 @@
         kind: Secret
         type: Opaque
         metadata:
-          name: htpasswd-secret
+          name: htpass-secret
           namespace: openshift-config
         data:
           htpasswd: "{{ users_htpasswd | b64encode }}"
