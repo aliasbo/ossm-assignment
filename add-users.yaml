@@ -43,3 +43,12 @@
         data:
           htpasswd: "{{ lookup('file',users_htpasswd) | b64encode }}"
 
+  - name: Create the Role for istio system admin
+    k8s:
+      state: present
+      definition: "{{ lookup('template',smcp_role) }}"
+
+  - name: Create the Role for bookinfo admin
+    k8s:
+      state: present
+      definition: "{{ lookup('template',bookinfo_role) }}"
