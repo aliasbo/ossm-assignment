@@ -57,6 +57,16 @@
       kind: Namespace
       state: present
  
+  - name: Create the Role for istio system admin
+    k8s:
+      state: present
+      definition: "{{ lookup('template',smcp_role) }}"
+
+  - name: Create the rolebinding for bookinfo admin
+    k8s:
+      state: present
+      definition:
+
   - name: Create the Service Mesh Control Plane
     k8s:
       apply: yes
@@ -120,12 +130,12 @@
   - name: Create a Policy for mTLS
     k8s:
       state: present
-      src: "{{ istio_policy }}"
+      definition: "{{ lookup('template',bookinfo_policy) }}"
 
   - name: Create a DestinationRule for mTLS
     k8s:
       state: present
-      src: "{{ istio_destinationrule }}"
+      definition: "{{ lookup('template',bookinfo_destinationrule) }}"
 
   - name: Create a VirtualService for productpage
     k8s:

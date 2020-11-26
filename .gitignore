@@ -1,1 +1,2 @@
 vars/k8s_login.yaml
+files/users.htpasswd

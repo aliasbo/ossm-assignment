@@ -2,7 +2,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
 metadata:
   name: default
-  namespace: bookretail-istio-system
+  namespace: {{ smcp_ns }}
 spec:
   host: "*.local"
   trafficPolicy:

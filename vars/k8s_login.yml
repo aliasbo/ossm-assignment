@@ -1,0 +1,10 @@
+k8s_admin: admin
+k8s_admin_password:
+
+smcp_admin:
+  user: bookretailadm
+  password: r3dh4t1!
+
+bookinfo_admin:
+  user: bookinfoadm
+  password: r3dh4t1!
