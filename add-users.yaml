@@ -21,6 +21,14 @@
       - "{{ smcp_admin }}"
       - "{{ bookinfo_admin }}"
 
+  - name: Log in to OpenShift
+    k8s_auth:
+      host: "{{ api_url }}"
+      ca_cert: "{{ api_cert }}"
+      username: "{{ k8s_admin }}"
+      password: "{{ k8s_admin_password }}"
+    register: k8s_auth_result
+
   - name: Replace htpasswd-secret with updated file
     k8s:
       state: present
