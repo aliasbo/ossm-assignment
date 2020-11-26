@@ -5,9 +5,9 @@ metadata:
     openshift.io/host.generated: "true"
   labels:
     app: productpage
-  name: productpage-route 
+  name: productpage-route
 spec:
-  host: productpage.bookinfo.apps.ocp4.lab.io
+  host: productpage.{{ bookinfo_ns }}.apps.{{ cluster_domain }}
   port:
     targetPort: https
   tls:

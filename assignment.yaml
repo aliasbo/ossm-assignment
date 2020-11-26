@@ -2,30 +2,13 @@
 ---
 - hosts: localhost
   gather_facts: no
-  vars:
-    api_url: https://api.cluster-a2e6.a2e6.sandbox1559.opentlc.com:6443
-    api_cert: "{{ playbook_dir }}/certs/api-cert.pem"
-    k8s_admin: admin
-    bookinfo_ns: bookinfo
-    bookinfo_def_url: https://raw.githubusercontent.com/istio/istio/1.4.0/samples/bookinfo/platform/kube/bookinfo.yaml
-    bookinfo_yaml: "{{ playbook_dir }}/files/bookinfo.yaml"
-    es_operator: "{{ playbook_dir }}/files/sub-elasticsearch.yaml"
-    jaeger_operator: "{{ playbook_dir }}/files/sub-jaeger.yaml"
-    kiali_operator: "{{ playbook_dir }}/files/sub-kiali.yaml"
-    sm_operator: "{{ playbook_dir }}/files/sub-servicemesh.yaml"
-    smcp_ns: bookretail-istio-system
-    smcp_yaml: "{{ playbook_dir }}/files/servicemesh-smcp.yaml"
-    smmr_yaml: "{{ playbook_dir }}/files/servicemesh-smmr.yaml"
-    secret_name: cacerts
-    ca_cert: "{{ playbook_dir }}/certs/ca-cert.pem"
-    ca_key: "{{ playbook_dir }}/certs/ca-key.pem"
-    root_cert: "{{ playbook_dir }}/certs/root-cert.pem"
-    cert_chain: "{{ playbook_dir }}/certs/cert-chain.pem"
+  vars_files:
+  - "{{ playbook_dir }}/vars/external_vars.yaml"
 
   tasks:
-  - include_vars: k8s_login.yml
+  - include_vars: "{{ playbook_dir }}/vars/k8s_login.yaml"
 
-  - name: Log in (obtain access token)
+  - name: Log in to OpenShift
     k8s_auth:
       host: "{{ api_url }}"
       ca_cert: "{{ api_cert }}"
@@ -49,16 +32,9 @@
   - name: Create the bookinfo application
     k8s:
       state: present
-      namespace: "{{ bookinfo }}"
+      namespace: "{{ bookinfo_ns }}"
       src: "{{ bookinfo_yaml }}"
 
-  - name: Create the route for productpage
-    k8s:
-      state: present
-      namespace: "{{ bookinfo_ns }}"
-      src: "{{ playbook_dir }}/files/productpage-route.yaml"
-      wait: yes
-    
   - name: Install the Operators
     k8s:
       state: present
@@ -74,7 +50,7 @@
       - "{{ kiali_operator }}"
       - "{{ sm_operator }}"
 
-  - name: Create the namespace for the SM Control Plane
+  - name: Create the namespace for Istio System
     k8s:
       name: "{{ smcp_ns }}"
       api_version: v1
@@ -87,23 +63,27 @@
       state: present
       src: "{{ smcp_yaml }}"
       namespace: "{{ smcp_ns }}"
-      wait_condition:
-        reason: ComponentsReady
-        status: "True"
-        type: Ready
+
+  - name: Wait for SMCP to be Ready
+    k8s_info:
+      api_version: maistra.io/v2
+      kind: ServiceMeshControlPlane
+      name: service-mesh-installation
+      namespace: "{{ smcp_ns }}"
+    register: smcp_status
+    until: smcp_status.resources[0].status.conditions[2].status == "True"
+    retries: 30 
+    delay: 10
+    ignore_errors: yes
 
   - name: Create the Service Mesh Member Roll
     k8s:
       apply: yes
       state: present
-      src: "{{ smmr_yaml }}"
       namespace: "{{ smcp_ns }}"
-      wait_condition:
-        reason: Configured
-        status: "True"
-        type: Ready
+      src: "{{ smmr_yaml }}"
 
-  - name: Get a list of deployments from bookinfo
+  - name: Get a list of deployments
     k8s_facts:
       api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
       kind: Deployment
@@ -115,29 +95,53 @@
       oc -n {{ bookinfo_ns }} patch deployment {{ item.metadata.name }} -p
       '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject": "true" }}}}}'
     loop: "{{ deploy_list.resources }}"
-
-  - name: bookinfo-service-policy
-
-  - name: Create secret for Certificates
+  
+  - name: Create TLS Secret in SMCP Namespace
     k8s:
       state: present
       definition: 
         apiVersion: v1
         kind: Secret
-        type: Opaque             
+        type: tls
         metadata:
           name: "{{ secret_name }}"
           namespace: "{{ smcp_ns }}"     
         data:
-          ca-cert.pem: "{{ lookup('file',ca_cert ) | b64encode }}"
-          ca-key.pem: "{{ lookup('file',ca_key ) | b64encode }}"
-          root-cert.pem: "{{ lookup('file',root_cert ) | b64encode }}"
-          cert-chain.pem: "{{ lookup('file',cert_chain ) | b64encode }}"
+          tls.crt: "{{ lookup('file',tls_cert ) | b64encode }}"
+          tls.key: "{{ lookup('file',tls_key ) | b64encode }}"
+  
+  - name: Define a Wildcard Gateway
+    k8s:
+      state: present
+      namespace: "{{ smcp_ns }}"
+      template: "{{ wildcard_gateway }}"
 
+  - name: Create a Policy for mTLS
+    k8s:
+      state: present
+      src: "{{ istio_policy }}"
 
-#  - name: Get a list of all pods from the bookinfo namespace
-#    k8s_facts:
-#      api_key: "{{ k8s_auth_results.k8s_auth.api_key }}"
-#      kind: Pod
-#      namespace: bookinfo
-#    register: pod_list
+  - name: Create a DestinationRule for mTLS
+    k8s:
+      state: present
+      src: "{{ istio_destinationrule }}"
+
+  - name: Create a VirtualService for productpage
+    k8s:
+      state: present
+      template: "{{ productpage_virtualservice }}"
+
+  - name: Create a Route for productpage
+    k8s:
+      state: present
+      template: "{{ productpage_route }}"
+
+  - name: Check that the productpage service can be reached through the Istio ingress gateway
+    uri:
+      url: "https://productpage.{{ bookinfo_ns }}.apps.{{ cluster_domain }}/productpage
+      return_content: yes
+      validate_certs: no
+    register: this
+ 
+  - debug:
+      var: this

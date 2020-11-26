@@ -1,0 +1,23 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ns-access-for-admin-bookretail-istio-system
+  namespace: bokretail-istio-system
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: access-all-bookretail-istio-system
+  namespace: bokretail-istio-system
+subjects:
+- kind: User
+  name: bookretail
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: ns-access-for-admin-bookretail-istio-system
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,25 @@
+---
+cluster_domain: cluster-a2e6.a2e6.sandbox1559.opentlc.com
+api_url: "https://api.{{ cluster_domain }}:6443"
+api_cert: "{{ playbook_dir }}/certs/api-cert.pem"
+k8s_admin: admin
+bookinfo_ns: bookinfo
+bookinfo_def_url: https://raw.githubusercontent.com/istio/istio/1.4.0/samples/bookinfo/platform/kube/bookinfo.yaml
+bookinfo_yaml: "{{ playbook_dir }}/files/bookinfo.yaml"
+es_operator: "{{ playbook_dir }}/files/sub-elasticsearch.yaml"
+jaeger_operator: "{{ playbook_dir }}/files/sub-jaeger.yaml"
+kiali_operator: "{{ playbook_dir }}/files/sub-kiali.yaml"
+sm_operator: "{{ playbook_dir }}/files/sub-servicemesh.yaml"
+smcp_ns: bookretail-istio-system
+smcp_yaml: "{{ playbook_dir }}/files/servicemesh-smcp.yaml"
+smmr_yaml: "{{ playbook_dir }}/files/servicemesh-smmr.yaml"
+secret_tls: istio-ingressgateway-certs
+tls_cert: "{{ playbook_dir }}/certs/tls.crt"
+tls_key: "{{ playbook_dir }}/certs/tls.key"
+wildcard_gateway: "{{ playbook_dir }}/templates/wildcard-gateway.yaml.j2"
+productpage_route: "{{ playbook_dir }}/templates/productpage-route.yaml.j2"
+productpage_virtualservice: "{{ playbook_dir }}/templates/productpage-virtualservice.yaml.j2"
+wildcard_gateway: "{{ playbook_dir }}/templates/wildcard-gateway.yaml.j2"
+istio_policy: "{{ playbook_dir }}/files/bookinfo-policy.yaml"
+istio_destinationrule: "{{ playbook_dir }}/files/bookinfo-destinationrule.yaml"
+smcp_role: "{{ playbook_dir }}/files/bookretail-admin-role.yaml"
