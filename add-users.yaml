@@ -31,8 +31,8 @@
 
   - name: Replace htpasswd-secret with updated file
     k8s:
-      state: present
       apply: yes
+      state: present
       definition: 
         apiVersion: v1
         kind: Secret
@@ -41,5 +41,5 @@
           name: htpasswd-secret
           namespace: openshift-config
         data:
-          htpasswd: "{{ users_htpasswd }}"
+          htpasswd: "{{ users_htpasswd | b64encode }}"
 
