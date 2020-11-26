@@ -138,6 +138,10 @@
       state: present
       namespace: "{{ smcp_ns }}"
       definition: "{{ lookup('template',productpage_route) }}"
+      wait: yes
+      wait_condition:
+        status: "True"
+        type: Admitted
 
   - name: Check that the productpage service can be reached through the Istio ingress gateway
     uri:
