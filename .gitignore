@@ -1,4 +1,4 @@
-files/k8s_login.yaml
+vars/k8s_login.yaml
 files/users.htpasswd
 files/kubeconfig
 files/users.htpasswd.BAK
