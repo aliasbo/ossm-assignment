@@ -95,6 +95,7 @@
       oc -n {{ bookinfo_ns }} patch deployment {{ item.metadata.name }} -p
       '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject": "true" }}}}}'
     loop: "{{ deploy_list.resources }}"
+    no_log: True
   
   - name: Create TLS Secret in SMCP Namespace
     k8s:
@@ -104,7 +105,7 @@
         kind: Secret
         type: tls
         metadata:
-          name: "{{ secret_name }}"
+          name: "{{ secret_tls }}"
           namespace: "{{ smcp_ns }}"     
         data:
           tls.crt: "{{ lookup('file',tls_cert ) | b64encode }}"
