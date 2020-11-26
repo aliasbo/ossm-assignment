@@ -23,6 +23,7 @@ bookinfo_policy: "{{ playbook_dir }}/templates/bookinfo-policy.yaml.j2"
 bookinfo_destinationrule: "{{ playbook_dir }}/templates/bookinfo-destinationrule.yaml.j2"
 smcp_role: "{{ playbook_dir }}/templates/bookretail-admin-role.yaml.j2"
 bookinfo_role: "{{ playbook_dir }}/templates/bookinfo-admin-role.yaml.j2"
+secret_htpasswd: htpasswd-secret
 users_htpasswd: "{{ playbook_dir }}/files/users.htpasswd"
 #  Users to be declared in k8s_login.yaml
 #k8s_admin: admin
