@@ -1,24 +1,28 @@
+#  This play is used to add the users and grant them with certain roles
 ---
 - hosts: localhost
   gather_facts: no
   vars_files:
   - "{{ playbook_dir }}/vars/external_vars.yaml"
+  module_defaults:
+    group/k8s:
+      kubeconfig: "{{ kubeconfig_file }}"
 
   tasks:
   - include_vars: "{{ playbook_dir }}/vars/k8s_login.yaml"
 
-  - name: Log in to OpenShift
-    k8s_auth:
-      host: "{{ api_url }}"
-      ca_cert: "{{ api_cert }}"
-      username: "{{ k8s_admin }}"
-      password: "{{ k8s_admin_password }}"
-    register: k8s_auth_result
+  - name: Retrieve htpasswd-secret
+    k8s_info:
+      api_version: v1
+      kind: Secret
+      name: "{{ secret_htpasswd }}"
+      namespace: openshift-config
+    register: output_secret
 
-  - name: Retrieve HTPasswd file
-    shell: >
-      oc get secret {{ secret_htpasswd }} -ojsonpath={.data.htpasswd}
-      -n openshift-config | base64 -d > {{ users_htpasswd }}
+  - name: Save contents to a file
+    copy:
+      content: "{{ output_secret.resources[0].data.htpasswd | b64decode }}"
+      dest: "{{ users_htpasswd }}"
 
   - name: Add users to the HTPasswd file
     htpasswd:
@@ -26,8 +30,8 @@
       name: "{{ item.user }}"
       password: "{{ item.password }}"
     loop:
-      - "{{ smcp_admin }}"
-      - "{{ bookinfo_admin }}"
+      - "{{ k8s_smcp_admin }}"
+      - "{{ k8s_bookinfo_admin }}"
 
   - name: Replace htpasswd-secret with updated file
     k8s:
@@ -41,13 +45,3 @@
           namespace: openshift-config
         data:
           htpasswd: "{{ lookup('file',users_htpasswd) | b64encode }}"
-
-  - name: Create the Role for istio system admin
-    k8s:
-      state: present
-      definition: "{{ lookup('template',smcp_role) }}"
-
-  - name: Create the Role for bookinfo admin
-    k8s:
-      state: present
-      definition: "{{ lookup('template',bookinfo_role) }}"
