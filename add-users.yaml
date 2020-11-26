@@ -17,6 +17,7 @@
       path: "{{ users_htpasswd }}"
       name: "{{ item.user }}"
       password: "{{ item.password }}"
+      crypt_scheme: bcrypt
     loop:
       - "{{ smcp_admin }}"
       - "{{ bookinfo_admin }}"
