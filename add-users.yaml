@@ -32,6 +32,7 @@
   - name: Replace htpasswd-secret with updated file
     k8s:
       state: present
+      apply: yes
       definition: 
         apiVersion: v1
         kind: Secret
