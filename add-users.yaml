@@ -41,5 +41,5 @@
           name: htpass-secret
           namespace: openshift-config
         data:
-          htpasswd: "{{ users_htpasswd | b64encode }}"
+          htpasswd: "{{ lookup('file',users_htpasswd) | b64encode }}"
 
