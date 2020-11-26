@@ -130,11 +130,13 @@
   - name: Create a VirtualService for productpage
     k8s:
       state: present
+      namespace: "{{ bookinfo_ns }}"
       definition: "{{ lookup('template',productpage_virtualservice) }}"
 
   - name: Create a Route for productpage
     k8s:
       state: present
+      namespace: "{{ smcp_ns }}"
       definition: "{{ lookup('template',productpage_route) }}"
 
   - name: Check that the productpage service can be reached through the Istio ingress gateway
