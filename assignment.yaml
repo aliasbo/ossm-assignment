@@ -115,7 +115,7 @@
     k8s:
       state: present
       namespace: "{{ smcp_ns }}"
-      src: "{{ lookup('template',wildcard_gateway) }}"
+      definition: "{{ lookup('template',wildcard_gateway) }}"
 
   - name: Create a Policy for mTLS
     k8s:
@@ -130,12 +130,12 @@
   - name: Create a VirtualService for productpage
     k8s:
       state: present
-      src: "{{ lookup('template',productpage_virtualservice) }}"
+      definition: "{{ lookup('template',productpage_virtualservice) }}"
 
   - name: Create a Route for productpage
     k8s:
       state: present
-      src: "{{ lookup('template',productpage_route) }}"
+      definition: "{{ lookup('template',productpage_route) }}"
 
   - name: Check that the productpage service can be reached through the Istio ingress gateway
     uri:
