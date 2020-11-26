@@ -1,6 +1,8 @@
 ---
 - hosts: localhost
   gather_facts: no
+  vars_files:
+  - "{{ playbook_dir }}/vars/external_vars.yaml"
 
   tasks:
   - include_vars: "{{ playbook_dir }}/vars/k8s_login.yaml"
